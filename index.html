@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ru" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Викторина</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="viewport">
+    <div id="stage">
+      <div class="backdrop"><div class="dots"></div></div>
+      <div class="chrome"></div>
+      <div class="slides"></div>
+      <div class="progress"></div>
+    </div>
+  </div>
+
+  <!-- Кнопки ведущего: появляются при движении мыши -->
+  <div id="hud">
+    <button data-a="prev" title="Назад (←)">◀</button>
+    <span class="pos"></span>
+    <button data-a="next" title="Дальше (→ / Пробел)">▶</button>
+    <button data-a="timer" title="Таймер: пауза / старт (P)">⏯</button>
+    <button data-a="scores" title="Очки команд (S)">Очки</button>
+    <button data-a="slides" title="Все слайды (O)">Слайды</button>
+    <button data-a="theme" title="Тема (T)">◐</button>
+    <button data-a="full" title="Полный экран (F)">⛶</button>
+    <button data-a="help" title="Управление (H)">?</button>
+  </div>
+
+  <script src="js/data.js"></script>
+  <script src="js/sound.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
