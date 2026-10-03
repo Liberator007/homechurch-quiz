@@ -97,10 +97,9 @@ window.QUIZ = {
         { file: "assets/sounds/03_mario.mp3", clip: 8, answer: "Super Mario", detail: "Главная тема из игры" },
         { file: "assets/sounds/04_windows_xp.mp3", clip: 8, answer: "Windows XP", detail: "Мелодия загрузки компьютера" },
         { file: "assets/sounds/05_millioner.mp3", clip: 10, answer: "«Кто хочет стать миллионером?»", detail: "Музыка во время вопроса" },
-        { file: "assets/sounds/06_fruit_ninja.mp3", clip: 6, answer: "Fruit Ninja", detail: "Звук разрезания фрукта" },
-        { file: "assets/sounds/07_diskovyi_telefon.mp3", synth: "rotary", clip: 8, answer: "Дисковый телефон", detail: "Щелчки набора номера" },
-        { file: "assets/sounds/08_tetris.mp3", synth: "tetris", clip: 10, answer: "Тетрис", detail: "Мелодия — народная песня «Коробейники»" },
-        { file: "assets/sounds/09_signaly_vremeni.mp3", synth: "pips", clip: 7, answer: "Сигналы точного времени", detail: "«Пик-пик-пик…» по радио" },
+        { file: "assets/sounds/06_diskovyi_telefon.mp3", synth: "rotary", clip: 8, answer: "Дисковый телефон", detail: "Щелчки набора номера" },
+        { file: "assets/sounds/07_tetris.mp3", synth: "tetris", clip: 10, answer: "Тетрис", detail: "Мелодия — народная песня «Коробейники»" },
+        { file: "assets/sounds/08_signaly_vremeni.mp3", synth: "pips", clip: 7, answer: "Сигналы точного времени", detail: "«Пик-пик-пик…» по радио" },
       ],
     },
 
