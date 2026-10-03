@@ -186,7 +186,7 @@
     sculpt: (r) => `${r.questions.length} ${plural(r.questions.length, "вопрос", "вопроса", "вопросов")} · ${r.phases.map((p) => `${p.label.toLowerCase()} ${fmtLong(p.seconds)}`).join(" + ")}`,
     sounds: (r) => `${r.sounds.length} звуков · каждый дважды, ${r.writeSeconds} сек на запись`,
     bible: (r) => `${r.statements.length} утверждений · по ${r.seconds} сек`,
-    closeup: (r) => `${r.items.length} предметов · 3 этапа по ${r.stageSeconds} сек`,
+    closeup: (r) => `${r.items.length} предметов · ${(r.stages || [1, 2, 3]).length} этапа по ${r.stageSeconds} сек`,
     flip: (r) => `${r.puzzles.length} загадок · по ${r.seconds} сек`,
     order: (r) => `${r.events.length} карточек · ${fmtLong(r.seconds)} на раскладку`,
   };
@@ -414,35 +414,45 @@
       const r = s.round;
       const it = s.it;
       n.classList.add("s-closeup");
+      // Этапы: какую картинку показать и во сколько раз её приблизить
+      const STAGES = r.stages || [{ img: 1, zoom: 2 }, { img: 1, zoom: 1 }, { img: 2, zoom: 1 }];
+      const last = STAGES.length - 1;
       let stage = -1;
-      const imgs = [];
-      const failed = [false, false, false];
+      const imgs = {};
+      const failed = {};
       const q = questionSlide(s, n, {
         cover: cover("Предмет", s.i, s.total),
         body: `<div class="frame"></div>`,
         phases: [{ label: "", seconds: r.stageSeconds }],
-        steps: [0, 1, 2].map((k) => [`Этап ${k + 1}`, `${3 - k} ${ptsWord(3 - k)}`]),
+        steps: STAGES.map((_, k) => [`Этап ${k + 1}`, `${STAGES.length - k} ${ptsWord(STAGES.length - k)}`]),
         endText: "Время вышло",
         manualStart: true,
         onReveal: (ctx) => goStage(ctx, 0),
-        onEnd: (ctx) => { if (stage < 2) goStage(ctx, stage + 1); },
+        onEnd: (ctx) => { if (stage < last) goStage(ctx, stage + 1); },
         next: (ctx) => {
-          if (stage < 2) { goStage(ctx, stage + 1); return true; }
+          if (stage < last) { goStage(ctx, stage + 1); return true; }
           return false;
         },
       });
       const frame = n.querySelector(".frame");
-      const ph = el(`<div class="placeholder"><div><b></b>Нет картинки<br><code>assets/closeup/${esc(it.prefix)}_1.jpg … _3.jpg</code></div></div>`);
+      const ph = el(`<div class="placeholder"><div><b></b>Нет картинки<br><code></code></div></div>`);
       ph.style.display = "none";
       frame.appendChild(ph);
       const show = () => {
-        imgs.forEach((im, k) => im.classList.toggle("on", k === stage && !failed[k]));
-        ph.style.display = stage >= 0 && failed[stage] ? "" : "none";
+        const st = STAGES[stage];
+        Object.entries(imgs).forEach(([num, im]) => {
+          const on = st && Number(num) === st.img && !failed[num];
+          im.classList.toggle("on", on);
+          if (on) im.style.transform = `scale(${st.zoom || 1})`;
+        });
+        ph.style.display = st && failed[st.img] ? "" : "none";
         ph.querySelector("b").textContent = `Этап ${stage + 1}`;
+        if (st) ph.querySelector("code").textContent = `assets/closeup/${it.prefix}_${st.img}.jpg`;
       };
-      [1, 2, 3].forEach((num, k) => {
-        const img = loadImage(`assets/closeup/${it.prefix}_${num}`, show, () => { failed[k] = true; show(); });
-        imgs.push(img);
+      [...new Set(STAGES.map((st) => st.img))].forEach((num) => {
+        const img = loadImage(`assets/closeup/${it.prefix}_${num}`, show, () => { failed[num] = true; show(); });
+        img.style.transform = `scale(${STAGES.find((st) => st.img === num).zoom || 1})`;
+        imgs[num] = img;
         frame.appendChild(img);
       });
       function goStage(ctx, k) {
@@ -509,7 +519,7 @@
       // миниатюры для «Крупного плана»
       n.querySelectorAll("img[data-thumb]").forEach((im) => {
         const base = `assets/closeup/${im.dataset.thumb}`;
-        loadImage(`${base}_3`, (ok) => { im.src = ok.src; }, () => im.remove());
+        loadImage(`${base}_2`, (ok) => { im.src = ok.src; }, () => im.remove());
       });
 
       const rows = [...n.querySelectorAll(".arow")];

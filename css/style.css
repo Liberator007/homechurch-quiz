@@ -324,7 +324,7 @@ button { font: inherit; color: inherit; }
 /* Крупный план */
 .s-closeup .q-main { padding: 0; margin: -150px 0 -120px -140px; background: #000; }
 .s-closeup .q-cover { inset: 0; padding: 150px 140px 120px; background: var(--bg); z-index: 2; }
-.frame { position: absolute; inset: 0; }
+.frame { position: absolute; inset: 0; overflow: hidden; }
 .frame img {
   position: absolute;
   inset: 0;
@@ -332,7 +332,7 @@ button { font: inherit; color: inherit; }
   height: 100%;
   object-fit: contain;
   opacity: 0;
-  transition: opacity .6s ease;
+  transition: opacity .6s ease, transform 1.4s cubic-bezier(.2, .7, .2, 1);
 }
 .frame img.on { opacity: 1; }
 .frame .placeholder {
