@@ -221,18 +221,8 @@ window.Sound = (() => {
     tone(master, 659.25, t + 0.14, 0.16, { type: "triangle", vol: 0.35 });
     tone(master, 783.99, t + 0.28, 0.5, { type: "triangle", vol: 0.35, release: 0.3 });
   }
-  function fanfare() {
-    if (muted) return;
-    const c = audio();
-    const t = c.currentTime + 0.02;
-    [["C5", 0, .15], ["E5", .15, .15], ["G5", .3, .15], ["C6", .45, .7]].forEach(([n, s, d]) => {
-      tone(master, freq(n), t + s, d, { type: "square", vol: 0.06, release: 0.2 });
-      tone(master, freq(n), t + s, d, { type: "triangle", vol: 0.25, release: 0.2 });
-    });
-  }
-
   return {
-    play, probe, tick, end, fanfare,
+    play, probe, tick, end,
     unlock: audio,
     get muted() { return muted; },
     set muted(v) { muted = v; },
