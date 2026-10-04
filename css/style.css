@@ -352,17 +352,23 @@ button { font: inherit; color: inherit; }
 .flip-text { margin-top: 40px; font: 600 104px/1.08 var(--font); letter-spacing: -0.035em; text-wrap: balance; }
 
 /* Собери порядок */
-.cards { margin-top: 44px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+.wave-title { margin-top: 24px; font: 600 58px/1.1 var(--font); letter-spacing: -0.03em; }
+.wave-note { margin-top: 14px; font: 400 28px/1.3 var(--font); color: var(--muted); }
+.cover-title { margin-top: 40px; font: 500 52px/1.1 var(--font); color: var(--fg-2); letter-spacing: -0.02em; }
+.cards { margin-top: 34px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .cards div {
-  padding: 34px 32px;
-  min-height: 200px;
+  padding: 28px 28px;
+  min-height: 170px;
   border: 1px solid var(--line-2);
   border-radius: 10px;
   background: var(--surface);
-  font: 500 38px/1.2 var(--font);
+  font: 500 34px/1.2 var(--font);
   display: flex;
   align-items: flex-end;
 }
+.cards.with-images div { padding: 0; min-height: 0; flex-direction: column; align-items: stretch; overflow: hidden; }
+.cards.with-images img { width: 100%; height: 180px; object-fit: cover; display: block; }
+.cards.with-images span { padding: 16px 20px 18px; font-size: 28px; }
 
 /* ─────────────── Ответы раунда ─────────────── */
 .s-answers .head { display: flex; align-items: baseline; justify-content: space-between; }

@@ -176,9 +176,11 @@
       n: i + 1, prompt: st.text, verdict: st.isInBible, answer: st.explain,
       ref: st.ref,
     })),
-    closeup: (r) => r.items.map((it, i) => ({ n: i + 1, prompt: `Предмет ${i + 1}`, thumb: it.prefix, answer: it.answer, detail: it.fact })),
+    closeup: (r) => r.items.map((it, i) => ({ n: i + 1, prompt: `Предмет ${i + 1}`, thumb: `assets/closeup/${it.prefix}_2`, answer: it.answer, detail: it.fact })),
     flip: (r) => r.puzzles.map((p, i) => ({ n: i + 1, prompt: `«${p.flipped}»`, answer: `«${p.original}»`, detail: [p.kind, p.fact].filter(Boolean).join(". ") })),
-    order: (r) => r.events.map((e, i) => ({ n: i + 1, prompt: e.title, answer: String(e.year), detail: e.detail })),
+    order: (r, s) => [...r.waves[s.wave].cards].sort((a, b) => a.place - b.place).map((c) => ({
+      n: c.place, prompt: c.title, answer: c.answer, detail: c.detail, thumb: c.image && `assets/order/${c.image}`,
+    })),
   };
 
   // Короткое описание формата раунда для слайда с правилами
@@ -188,7 +190,7 @@
     bible: (r) => `${r.statements.length} утверждений · по ${r.seconds} сек`,
     closeup: (r) => `${r.items.length} предметов · ${(r.stages || [1, 2, 3]).length} этапа по ${r.stageSeconds} сек`,
     flip: (r) => `${r.puzzles.length} загадок · по ${r.seconds} сек`,
-    order: (r) => `${r.events.length} карточек · ${fmtLong(r.seconds)} на раскладку`,
+    order: (r) => `${r.waves.length} волн по ${r.waves[0].cards.length} карточек · ${fmtLong(r.seconds)} на каждую`,
   };
 
   const BUILD = {
@@ -200,7 +202,7 @@
     bible(r, base) { r.statements.forEach((st, i) => add("statement", { ...base, st, i, total: r.statements.length })); },
     closeup(r, base) { r.items.forEach((it, i) => add("closeup", { ...base, it, i, total: r.items.length })); },
     flip(r, base) { r.puzzles.forEach((p, i) => add("flip", { ...base, p, i, total: r.puzzles.length })); },
-    order(r, base) { add("orderPlay", base); },
+    order(r, base) { r.waves.forEach((w, i) => add("orderPlay", { ...base, w, i, total: r.waves.length })); },
   };
 
   add("title");
@@ -208,7 +210,9 @@
     const base = { round, ri };
     add("intro", base);
     BUILD[round.type](round, base);
-    add("answers", base);
+    // у «Собери порядок» ответы — отдельно на каждую волну
+    if (round.waves) round.waves.forEach((w, wave) => add("answers", { ...base, wave }));
+    else add("answers", base);
   });
   add("end");
 
@@ -218,13 +222,13 @@
       case "title": return "Заставка";
       case "end": return "Конец";
       case "intro": return "Правила";
-      case "answers": return "Ответы";
+      case "answers": return s.wave != null ? `Ответы: волна ${s.wave + 1}` : "Ответы";
       case "sculptQ": return (s.spare ? "Запасной: " : `${s.i + 1}. `) + cut(s.q.short || s.q.text);
       case "sound": return `Звук ${s.i + 1}`;
       case "statement": return `${s.i + 1}. ${cut(s.st.text)}`;
       case "closeup": return `Предмет ${s.i + 1}`;
       case "flip": return `${s.i + 1}. ${cut(s.p.flipped)}`;
-      case "orderPlay": return "Раскладка";
+      case "orderPlay": return `Волна ${s.i + 1}. ${s.w.title}`;
       default: return s.kind;
     }
   }
@@ -479,28 +483,34 @@
     /* ── Раунд 6 ── */
     orderPlay(s, n) {
       const r = s.round;
-      const mix = [3, 0, 5, 1, 4, 2].filter((k) => k < r.events.length);
+      const w = s.w;
+      const withImages = w.cards.some((c) => c.image);
       return questionSlide(s, n, {
-        body: `<div class="q-count">Разложите по порядку — от раннего к позднему</div>
-               <div class="cards">${mix.map((k) => `<div>${esc(r.events[k].title)}</div>`).join("")}</div>`,
+        cover: `${cover("Волна", s.i, s.total)}<div class="cover-title">${esc(w.title)}</div>`,
+        body: `${counter("Волна", s.i, s.total)}
+               <div class="wave-title">${esc(w.title)}</div>
+               <div class="wave-note">${esc(w.note ? `${w.note} · от раннего к позднему` : "От раннего к позднему")}</div>
+               <div class="cards ${withImages ? "with-images" : ""}">
+                 ${w.cards.map((c) => `<div>${c.image ? `<img src="assets/order/${esc(c.image)}.jpg" alt="">` : ""}<span>${esc(c.title)}</span></div>`).join("")}
+               </div>`,
         phases: [{ label: "Раскладываем", seconds: r.seconds }],
-        manualStart: true,
-        endText: "Стоп! Переворачиваем карточки",
+        endText: "Стоп!",
       });
     },
 
     /* ── Ответы раунда ── */
     answers(s, n) {
       const r = s.round;
-      const items = ANSWERS[r.type](r);
+      const items = ANSWERS[r.type](r, s);
+      const w = s.wave != null ? r.waves[s.wave] : null;
       const compact = items.every((a) => !a.prompt);
       const two = compact && items.length > 6;
       n.classList.add("s-answers");
       n.innerHTML = `
         <div class="head">
           <div>
-            <div class="label">Раунд ${s.ri + 1} · ${esc(r.title)}</div>
-            <h2>Ответы</h2>
+            <div class="label">Раунд ${s.ri + 1} · ${esc(r.title)}${w ? ` · Волна ${s.wave + 1}` : ""}</div>
+            <h2>${w ? `Ответы: ${esc(w.title)}` : "Ответы"}</h2>
           </div>
           <div class="q-count"><b class="shown">0</b> из ${items.length}</div>
         </div>
@@ -516,10 +526,9 @@
               </div></div>
             </li>`).join("")}${two ? "</div>" : ""}
         </ol>`;
-      // миниатюры для «Крупного плана»
+      // миниатюры («Крупный план», здания)
       n.querySelectorAll("img[data-thumb]").forEach((im) => {
-        const base = `assets/closeup/${im.dataset.thumb}`;
-        loadImage(`${base}_2`, (ok) => { im.src = ok.src; }, () => im.remove());
+        loadImage(im.dataset.thumb, (ok) => { im.src = ok.src; }, () => im.remove());
       });
 
       const rows = [...n.querySelectorAll(".arow")];
