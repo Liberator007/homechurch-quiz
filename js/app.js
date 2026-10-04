@@ -176,21 +176,13 @@
       n: i + 1, prompt: st.text, verdict: st.isInBible, answer: st.explain,
       ref: st.ref,
     })),
-    closeup: (r) => r.items.map((it, i) => ({ n: i + 1, prompt: `Предмет ${i + 1}`, thumb: `assets/closeup/${it.prefix}_2`, answer: it.answer, detail: it.fact })),
+    closeup: (r) => r.items.map((it, i) => ({ n: i + 1, prompt: `Предмет ${i + 1}`,
+      // до открытия ответа — крупный план, после — предмет целиком
+      thumb: `assets/closeup/${it.prefix}_1`, thumbAfter: `assets/closeup/${it.prefix}_2`, answer: it.answer, detail: it.fact })),
     flip: (r) => r.puzzles.map((p, i) => ({ n: i + 1, prompt: `«${p.flipped}»`, answer: `«${p.original}»`, detail: [p.kind, p.fact].filter(Boolean).join(". ") })),
     order: (r, s) => [...r.waves[s.wave].cards].sort((a, b) => a.place - b.place).map((c) => ({
       n: c.place, prompt: c.title, answer: c.answer, detail: c.detail, thumb: c.image && `assets/order/${c.image}`,
     })),
-  };
-
-  // Короткое описание формата раунда для слайда с правилами
-  const META = {
-    sculpt: (r) => `${r.questions.length} ${plural(r.questions.length, "вопрос", "вопроса", "вопросов")} · ${r.phases.map((p) => `${p.label.toLowerCase()} ${fmtLong(p.seconds)}`).join(" + ")}`,
-    sounds: (r) => `${r.sounds.length} звуков · каждый дважды, ${r.writeSeconds} сек на запись`,
-    bible: (r) => `${r.statements.length} утверждений · по ${r.seconds} сек`,
-    closeup: (r) => `${r.items.length} предметов · ${(r.stages || [1, 2, 3]).length} этапа по ${r.stageSeconds} сек`,
-    flip: (r) => `${r.puzzles.length} загадок · по ${r.seconds} сек`,
-    order: (r) => `${r.waves.length} волн по ${r.waves[0].cards.length} карточек · ${fmtLong(r.seconds)} на каждую`,
   };
 
   const BUILD = {
@@ -221,7 +213,7 @@
     switch (s.kind) {
       case "title": return "Заставка";
       case "end": return "Конец";
-      case "intro": return "Правила";
+      case "intro": return "Суть раунда";
       case "answers": return s.wave != null ? `Ответы: волна ${s.wave + 1}` : "Ответы";
       case "sculptQ": return (s.spare ? "Запасной: " : `${s.i + 1}. `) + cut(s.q.short || s.q.text);
       case "sound": return `Звук ${s.i + 1}`;
@@ -320,22 +312,12 @@
     intro(s, n) {
       const r = s.round;
       n.classList.add("s-intro");
+      // **текст** в «Сути» — жирным
+      const about = esc(r.about).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
       n.innerHTML = `
-        <div class="left">
-          <div class="label appear">Раунд ${s.ri + 1} из ${Q.rounds.length}</div>
-          <h1 class="appear" style="--i:1">${esc(r.title)}</h1>
-          <div class="tagline appear" style="--i:2">${esc(r.tagline)}</div>
-          <div class="meta appear" style="--i:3">${esc(META[r.type](r))}</div>
-        </div>
-        <div class="right">
-          <ol class="rules">${r.rules.map((t, i) => `<li class="appear" style="--i:${i + 2}">${esc(t)}</li>`).join("")}</ol>
-          <div class="scoring appear" style="--i:${r.rules.length + 2}">
-            ${r.scoring.map(([p, t]) => {
-              const k = parseInt(String(p).replace("+", ""), 10);
-              return `<div><b>${esc(p)} ${Number.isFinite(k) ? ptsWord(k) : ""}</b> — ${esc(t)}</div>`;
-            }).join("")}
-          </div>
-        </div>`;
+        <div class="label appear">Раунд ${s.ri + 1} из ${Q.rounds.length}</div>
+        <h1 class="appear" style="--i:1">${esc(r.title)}</h1>
+        <p class="about appear" style="--i:2">${about}</p>`;
     },
 
     /* ── Раунд 1 ── */
@@ -518,7 +500,7 @@
           ${items.map((a, idx) => `${two && idx === 0 ? `<div class="acol">` : ""}${two && idx === Math.ceil(items.length / 2) ? `</div><div class="acol">` : ""}
             <li class="arow">
               <div class="an">${esc(a.n)}</div>
-              ${compact ? "" : `<div class="aq">${a.thumb ? `<img data-thumb="${esc(a.thumb)}" alt="">` : ""}<span>${esc(a.prompt)}</span></div>`}
+              ${compact ? "" : `<div class="aq">${a.thumb ? `<span class="thumb ${a.thumbAfter ? "swap" : ""}"><img class="t-before" data-src="${esc(a.thumb)}" alt="">${a.thumbAfter ? `<img class="t-after" data-src="${esc(a.thumbAfter)}" alt="">` : ""}</span>` : ""}<span>${esc(a.prompt)}</span></div>`}
               <div class="aa"><div class="aa-in">
                 <div class="ans">${a.verdict != null ? `<span class="verdict ${a.verdict ? "y" : "n"}">${a.verdict ? "ЕСТЬ" : "НЕТ"}</span>` : ""}${a.verdict != null ? "" : esc(a.answer)}</div>
                 ${a.verdict != null ? `<div class="det" style="color:var(--fg-2)">${esc(a.answer)}${a.ref ? ` <span class="ref">${esc(a.ref)}</span>` : ""}</div>` : ""}
@@ -527,8 +509,8 @@
             </li>`).join("")}${two ? "</div>" : ""}
         </ol>`;
       // миниатюры («Крупный план», здания)
-      n.querySelectorAll("img[data-thumb]").forEach((im) => {
-        loadImage(im.dataset.thumb, (ok) => { im.src = ok.src; }, () => im.remove());
+      n.querySelectorAll(".thumb img[data-src]").forEach((im) => {
+        loadImage(im.dataset.src, (ok) => { im.src = ok.src; }, () => im.remove());
       });
 
       const rows = [...n.querySelectorAll(".arow")];

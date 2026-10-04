@@ -201,33 +201,18 @@ button { font: inherit; color: inherit; }
 .s-title .rounds span { display: block; font-size: 20px; color: var(--muted); margin-bottom: 10px; letter-spacing: .1em; text-transform: uppercase; }
 
 /* ─────────────── Начало раунда ─────────────── */
-.s-intro { flex-direction: row; gap: 120px; align-items: center; }
-.s-intro .left { width: 720px; flex: none; }
-.s-intro .num { font: 200 260px/0.8 var(--font); color: var(--accent); letter-spacing: -0.06em; margin-left: -12px; }
-.s-intro h1 { margin: 50px 0 20px; font: 700 96px/1 var(--font); letter-spacing: -0.035em; }
-.s-intro .tagline { font: 400 38px/1.3 var(--font); color: var(--fg-2); }
-.s-intro .meta { margin-top: 50px; font: 500 28px/1.4 var(--font); color: var(--muted); }
-.s-intro .meta b { color: var(--fg); font-weight: 600; }
-.s-intro .right { flex: 1; }
-.rules { list-style: none; margin: 0; padding: 0; counter-reset: r; }
-.rules li {
-  counter-increment: r;
-  display: flex;
-  gap: 30px;
-  padding: 26px 0;
-  border-top: 1px solid var(--line-2);
-  font: 400 34px/1.32 var(--font);
+.s-intro { justify-content: center; }
+.s-intro h1 { margin: 34px 0 0; font: 700 110px/1 var(--font); letter-spacing: -0.035em; }
+.s-intro .about {
+  margin: 56px 0 0;
+  max-width: 1480px;
+  padding-left: 36px;
+  border-left: 4px solid var(--accent);
+  font: 400 44px/1.42 var(--font);
+  color: var(--fg-2);
+  text-wrap: pretty;
 }
-.rules li:last-child { border-bottom: 1px solid var(--line-2); }
-.rules li::before {
-  content: counter(r, decimal-leading-zero);
-  flex: none;
-  width: 46px;
-  font: 500 24px/1.9 var(--font);
-  color: var(--accent);
-}
-.scoring { margin-top: 34px; display: flex; flex-direction: column; gap: 10px; font: 400 26px/1.3 var(--font); color: var(--muted); }
-.scoring b { color: var(--fg); font-weight: 600; }
+.s-intro .about b { color: var(--fg); font-weight: 600; }
 
 /* ─────────────── Вопрос + время сбоку ─────────────── */
 .s-q { flex-direction: row; padding-right: 0; gap: 0; }
@@ -401,7 +386,11 @@ button { font: inherit; color: inherit; }
 .alist.two .arow:last-child { border-bottom: 1px solid var(--line); }
 .arow .an { font: 400 calc(34px * var(--k))/1.25 var(--font); color: var(--muted); font-variant-numeric: tabular-nums; }
 .arow .aq { font: 400 calc(34px * var(--k))/1.25 var(--font); color: var(--fg-2); display: flex; gap: 24px; align-items: flex-start; }
-.arow .aq img { width: calc(150px * var(--k)); aspect-ratio: 16/9; object-fit: cover; border-radius: 6px; flex: none; background: var(--surface-2); }
+.arow .thumb { position: relative; width: calc(190px * var(--k)); aspect-ratio: 16/9; flex: none; border-radius: 6px; overflow: hidden; background: var(--surface-2); }
+.arow .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity .5s ease; }
+.arow .thumb .t-after { opacity: 0; }
+.arow.on .thumb.swap .t-before { opacity: 0; }
+.arow.on .thumb.swap .t-after { opacity: 1; }
 .arow .aa { position: relative; }
 .arow .aa::before {
   content: "";
