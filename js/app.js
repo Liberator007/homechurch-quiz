@@ -176,9 +176,6 @@
       n: i + 1, prompt: st.text, verdict: st.isInBible, answer: st.explain,
       ref: st.ref,
     })),
-    closeup: (r) => r.items.map((it, i) => ({ n: i + 1, prompt: `Предмет ${i + 1}`,
-      // до открытия ответа — крупный план, после — предмет целиком
-      thumb: `assets/closeup/${it.prefix}_1`, thumbAfter: `assets/closeup/${it.prefix}_2`, answer: it.answer, detail: it.fact })),
     flip: (r) => r.puzzles.map((p, i) => ({ n: i + 1, prompt: `«${p.flipped}»`, answer: `«${p.original}»`, detail: [p.kind, p.fact].filter(Boolean).join(". ") })),
     order: (r, s) => [...r.waves[s.wave].cards].sort((a, b) => a.place - b.place).map((c) => ({
       n: c.place, prompt: c.title, answer: c.answer, detail: c.detail, thumb: c.image && `assets/order/${c.image}`,
@@ -204,6 +201,7 @@
     BUILD[round.type](round, base);
     // у «Собери порядок» ответы — отдельно на каждую волну
     if (round.waves) round.waves.forEach((w, wave) => add("answers", { ...base, wave }));
+    else if (round.type === "closeup") add("closeupAnswers", base);
     else add("answers", base);
   });
   add("end");
@@ -214,6 +212,7 @@
       case "title": return "Заставка";
       case "end": return "Конец";
       case "intro": return "Суть раунда";
+      case "closeupAnswers": return "Ответы";
       case "answers": return s.wave != null ? `Ответы: волна ${s.wave + 1}` : "Ответы";
       case "sculptQ": return (s.spare ? "Запасной: " : `${s.i + 1}. `) + cut(s.q.short || s.q.text);
       case "sound": return `Звук ${s.i + 1}`;
@@ -400,56 +399,75 @@
       const r = s.round;
       const it = s.it;
       n.classList.add("s-closeup");
-      // Этапы: какую картинку показать и во сколько раз её приблизить
-      const STAGES = r.stages || [{ img: 1, zoom: 2 }, { img: 1, zoom: 1 }, { img: 2, zoom: 1 }];
-      const last = STAGES.length - 1;
-      let stage = -1;
-      const imgs = {};
-      const failed = {};
       const q = questionSlide(s, n, {
         cover: cover("Предмет", s.i, s.total),
         body: `<div class="frame"></div>`,
-        phases: [{ label: "", seconds: r.stageSeconds }],
-        steps: STAGES.map((_, k) => [`Этап ${k + 1}`, `${STAGES.length - k} ${ptsWord(STAGES.length - k)}`]),
-        endText: "Время вышло",
-        manualStart: true,
-        onReveal: (ctx) => goStage(ctx, 0),
-        onEnd: (ctx) => { if (stage < last) goStage(ctx, stage + 1); },
-        next: (ctx) => {
-          if (stage < last) { goStage(ctx, stage + 1); return true; }
-          return false;
-        },
+        phases: [{ label: "", seconds: r.seconds }],
       });
       const frame = n.querySelector(".frame");
-      const ph = el(`<div class="placeholder"><div><b></b>Нет картинки<br><code></code></div></div>`);
-      ph.style.display = "none";
-      frame.appendChild(ph);
-      const show = () => {
-        const st = STAGES[stage];
-        Object.entries(imgs).forEach(([num, im]) => {
-          const on = st && Number(num) === st.img && !failed[num];
-          im.classList.toggle("on", on);
-          if (on) im.style.transform = `scale(${st.zoom || 1})`;
-        });
-        ph.style.display = st && failed[st.img] ? "" : "none";
-        ph.querySelector("b").textContent = `Этап ${stage + 1}`;
-        if (st) ph.querySelector("code").textContent = `assets/closeup/${it.prefix}_${st.img}.jpg`;
-      };
-      [...new Set(STAGES.map((st) => st.img))].forEach((num) => {
-        const img = loadImage(`assets/closeup/${it.prefix}_${num}`, show, () => { failed[num] = true; show(); });
-        img.style.transform = `scale(${STAGES.find((st) => st.img === num).zoom || 1})`;
-        imgs[num] = img;
-        frame.appendChild(img);
+      const img = loadImage(`assets/closeup/${it.prefix}_1`, (im) => im.classList.add("on"), () => {
+        frame.innerHTML = `<div class="placeholder"><div>Нет картинки<br><code>assets/closeup/${esc(it.prefix)}_1.jpg</code></div></div>`;
       });
-      function goStage(ctx, k) {
-        stage = k;
-        show();
-        ctx.markStep(k);
-        ctx.status.textContent = "";
-        ctx.timer.reset();
-        ctx.timer.start();
-      }
+      img.style.transform = `scale(${r.zoom || 1})`;
+      frame.appendChild(img);
       return q;
+    },
+
+    /* ── Ответы «Крупного плана»: по кликам крупный план → целиком → слово-ответ ── */
+    closeupAnswers(s, n) {
+      const r = s.round;
+      n.classList.add("s-cu-answers");
+      n.innerHTML = `
+        <div class="head">
+          <div>
+            <div class="label">Раунд ${s.ri + 1} · ${esc(r.title)}</div>
+            <h2>Ответы</h2>
+          </div>
+        </div>
+        <div class="cu-body">
+          <div class="cu-frame"></div>
+          <div class="cu-side">
+            <div class="q-count">Предмет <b class="cu-num">1</b> из ${r.items.length}</div>
+            <div class="cu-answer"></div>
+          </div>
+        </div>`;
+      const frame = n.querySelector(".cu-frame");
+      const num = n.querySelector(".cu-num");
+      const answer = n.querySelector(".cu-answer");
+      // заранее грузим все картинки: [крупный план, целиком] для каждого предмета
+      const pics = r.items.map((it) => [1, 2].map((k) => {
+        const im = loadImage(`assets/closeup/${it.prefix}_${k}`, null, () => im.classList.add("missing"));
+        if (k === 1) im.style.transform = `scale(${r.zoom || 1})`;
+        return im;
+      }));
+      // шаг: 0 — крупный план, 1 — целиком, 2 — слово-ответ
+      let item = 0;
+      let step = 0;
+      const show = () => {
+        frame.replaceChildren(...pics[item]);
+        pics[item][0].classList.toggle("on", step === 0);
+        pics[item][1].classList.toggle("on", step >= 1);
+        num.textContent = item + 1;
+        answer.textContent = r.items[item].answer;
+        answer.classList.toggle("on", step >= 2);
+      };
+      show();
+      return {
+        next: () => {
+          if (step < 2) step++;
+          else if (item < r.items.length - 1) { item++; step = 0; }
+          else return false;
+          show();
+          return true;
+        },
+        prev: () => {
+          if (step > 0) step--;
+          else if (item > 0) { item--; step = 2; }
+          else return false;
+          show();
+          return true;
+        },
+      };
     },
 
     /* ── Раунд 5 ── */
