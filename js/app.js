@@ -329,7 +329,7 @@
         body: `${s.spare ? `<div class="q-count">Запасной вопрос</div>` : counter("Вопрос", s.i, s.total)}
                <div class="q-text ${long ? "long" : ""}">${esc(s.q.text)}</div>`,
         phases: r.phases,
-        steps: r.phases.map((p) => [p.label, fmt(p.seconds)]),
+        steps: r.phases.length > 1 ? r.phases.map((p) => [p.label, fmt(p.seconds)]) : null,
         stepsFollowTimer: true,
         endText: "Стоп! Фото — ведущему",
       });
