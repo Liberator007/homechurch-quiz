@@ -31,12 +31,14 @@
   --no: #e2716f;
   --accent: #d9b35f;
 
-  --r-sculpt: #e0a06a;
+  --r-draw: #e0a06a;
   --r-sounds: #72b6c9;
-  --r-bible: #d6b360;
+  --r-emoji: #d6b360;
   --r-closeup: #a2bf7c;
-  --r-flip: #d48ea6;
-  --r-order: #a99cdb;
+  --r-touch: #8fc4b0;
+  --r-frames: #d48ea6;
+  --r-trivia: #a99cdb;
+  --r-blitz: #e2857a;
 
   --font: "Onest", "Segoe UI", system-ui, sans-serif;
   color-scheme: dark;
@@ -54,21 +56,25 @@
   --yes: #1f8a52;
   --no: #c23b3b;
 
-  --r-sculpt: #b8622a;
+  --r-draw: #b8622a;
   --r-sounds: #237f99;
-  --r-bible: #9a7414;
+  --r-emoji: #9a7414;
   --r-closeup: #5a7d2c;
-  --r-flip: #a8466b;
-  --r-order: #5d4cb0;
+  --r-touch: #2f7d66;
+  --r-frames: #a8466b;
+  --r-trivia: #5d4cb0;
+  --r-blitz: #b8413a;
   color-scheme: light;
 }
 
-[data-round="sculpt"] { --accent: var(--r-sculpt); }
+[data-round="draw"] { --accent: var(--r-draw); }
 [data-round="sounds"] { --accent: var(--r-sounds); }
-[data-round="bible"] { --accent: var(--r-bible); }
+[data-round="emoji"] { --accent: var(--r-emoji); }
 [data-round="closeup"] { --accent: var(--r-closeup); }
-[data-round="flip"] { --accent: var(--r-flip); }
-[data-round="order"] { --accent: var(--r-order); }
+[data-round="touch"] { --accent: var(--r-touch); }
+[data-round="frames"] { --accent: var(--r-frames); }
+[data-round="trivia"] { --accent: var(--r-trivia); }
+[data-round="blitz"] { --accent: var(--r-blitz); }
 
 /* ─────────────── Каркас ─────────────── */
 * { box-sizing: border-box; }
@@ -187,10 +193,10 @@ button { font: inherit; color: inherit; }
   letter-spacing: -0.05em;
 }
 .s-title .rounds {
-  margin-top: 110px;
+  margin-top: 90px;
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 28px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 40px 28px;
 }
 .s-title .rounds div {
   padding-top: 22px;
@@ -299,13 +305,6 @@ button { font: inherit; color: inherit; }
 .sound-status { margin-top: 36px; font: 500 34px/1.2 var(--font); color: var(--fg-2); min-height: 40px; }
 .missing { position: absolute; left: 140px; bottom: 90px; font: 400 20px/1.3 var(--font); color: var(--no); }
 
-/* Утверждения */
-.statement { margin-top: 40px; font: 500 70px/1.2 var(--font); letter-spacing: -0.015em; text-wrap: pretty; }
-.yn { margin-top: 56px; display: flex; gap: 20px; font: 600 28px/1 var(--font); letter-spacing: .12em; }
-.yn span { padding: 16px 26px; border: 1px solid var(--line-2); border-radius: 6px; }
-.yn .y { color: var(--yes); }
-.yn .n { color: var(--no); }
-
 /* Крупный план */
 .s-closeup .q-main { padding: 0; margin: -150px 0 -120px -140px; background: #000; }
 .s-closeup .q-cover { inset: 0; padding: 150px 140px 120px; background: var(--bg); z-index: 2; }
@@ -333,27 +332,32 @@ button { font: inherit; color: inherit; }
 .frame .placeholder b { display: block; font: 200 160px/1 var(--font); color: var(--fg-2); margin-bottom: 20px; }
 .frame .placeholder code { font-size: 22px; }
 
-/* Перевёртыши */
-.flip-text { margin-top: 40px; font: 600 104px/1.08 var(--font); letter-spacing: -0.035em; text-wrap: balance; }
+/* Вопросы с текстом: варианты ответа, эмодзи, картинка */
+.opts { list-style: none; margin: 36px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 14px; }
+.opts li { padding: 14px 24px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--surface); font: 500 34px/1.2 var(--font); }
+.opts.numbered { counter-reset: o; flex-direction: column; flex-wrap: nowrap; align-items: flex-start; }
+.opts.numbered li { counter-increment: o; display: flex; gap: 18px; }
+.opts.numbered li::before { content: counter(o); color: var(--accent); font-weight: 600; }
+.emoji-q, .emoji-p { font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", var(--font); }
+.emoji-q { margin-top: 50px; font-size: 150px; line-height: 1.2; letter-spacing: .06em; }
+.q-img { display: block; margin-top: 40px; max-width: 100%; max-height: 380px; border-radius: 10px; }
 
-/* Собери порядок */
-.wave-title { margin-top: 24px; font: 600 58px/1.1 var(--font); letter-spacing: -0.03em; }
-.wave-note { margin-top: 14px; font: 400 28px/1.3 var(--font); color: var(--muted); }
-.cover-title { margin-top: 40px; font: 500 52px/1.1 var(--font); color: var(--fg-2); letter-spacing: -0.02em; }
-.cards { margin-top: 34px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-.cards div {
-  padding: 28px 28px;
-  min-height: 170px;
-  border: 1px solid var(--line-2);
-  border-radius: 10px;
-  background: var(--surface);
-  font: 500 34px/1.2 var(--font);
-  display: flex;
-  align-items: flex-end;
+/* Ответы «Угадай по кадру» */
+.s-fr-answers .head { display: flex; align-items: baseline; justify-content: space-between; }
+.s-fr-answers h2 { margin: 18px 0 0; font: 700 72px/1 var(--font); letter-spacing: -0.03em; }
+.fr-grid { flex: 1; min-height: 0; margin-top: 34px; display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(3, 1fr); gap: 18px; }
+.fr-card { position: relative; border-radius: 8px; overflow: hidden; background: #000; border: 2px solid transparent; transition: border-color .3s; min-height: 0; }
+.fr-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.fr-n { position: absolute; left: 10px; top: 8px; z-index: 2; font: 600 22px/1 var(--font); color: #fff; text-shadow: 0 1px 4px rgba(0, 0, 0, .8); }
+.fr-title {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2;
+  padding: 26px 12px 10px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, .88) 40%);
+  color: #fff; font: 600 21px/1.2 var(--font);
+  opacity: 0; transform: translateY(10px); transition: opacity .4s, transform .4s;
 }
-.cards.with-images div { padding: 0; min-height: 0; flex-direction: column; align-items: stretch; overflow: hidden; }
-.cards.with-images img { width: 100%; height: 180px; object-fit: cover; display: block; }
-.cards.with-images span { padding: 16px 20px 18px; font-size: 28px; }
+.fr-card.on .fr-title { opacity: 1; transform: none; }
+.fr-card.cur { border-color: var(--accent); }
 
 /* ─────────────── Ответы раунда ─────────────── */
 .s-answers .head { display: flex; align-items: baseline; justify-content: space-between; }
@@ -375,7 +379,7 @@ button { font: inherit; color: inherit; }
   grid-template-columns: calc(70px * var(--k)) minmax(0, 1fr) minmax(0, 1.3fr);
   gap: calc(40px * var(--k));
   align-items: start;
-  padding: calc(18px * var(--k)) 0;
+  padding: calc(13px * var(--k)) 0;
   border-top: 1px solid var(--line);
   transition: background .3s;
 }
@@ -385,6 +389,7 @@ button { font: inherit; color: inherit; }
 .alist.two .acol { flex: 1; min-width: 0; }
 .alist.two .arow:last-child { border-bottom: 1px solid var(--line); }
 .arow .an { font: 400 calc(34px * var(--k))/1.25 var(--font); color: var(--muted); font-variant-numeric: tabular-nums; }
+.arow .emoji-p { font-size: calc(46px * var(--k)); line-height: 1.15; }
 .arow .aq { font: 400 calc(34px * var(--k))/1.25 var(--font); color: var(--fg-2); display: flex; gap: 24px; align-items: flex-start; }
 .arow .thumb { position: relative; width: calc(190px * var(--k)); aspect-ratio: 16/9; flex: none; border-radius: 6px; overflow: hidden; background: var(--surface-2); }
 .arow .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity .5s ease; }
@@ -408,12 +413,8 @@ button { font: inherit; color: inherit; }
 .arow .ans { font: 600 calc(42px * var(--k))/1.2 var(--font); letter-spacing: -0.01em; }
 .arow .det { display: none; margin-top: calc(10px * var(--k)); font: 400 calc(28px * var(--k))/1.35 var(--font); color: var(--muted); }
 .arow.cur .det { display: block; animation: fade-in .4s ease both; }
-.arow .ref { color: var(--accent); font-weight: 600; white-space: nowrap; }
 .arow.cur .an { color: var(--accent); }
 .arow.cur .ans { color: var(--accent); }
-.verdict { display: inline-block; margin-right: 16px; font-weight: 700; letter-spacing: .06em; }
-.verdict.y { color: var(--yes); }
-.verdict.n { color: var(--no); }
 
 /* Ответы «Крупного плана» */
 .s-cu-answers h2 { margin: 18px 0 0; font: 700 72px/1 var(--font); letter-spacing: -0.03em; }

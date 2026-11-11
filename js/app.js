@@ -165,33 +165,29 @@
 
   // Что показать в списке ответов раунда
   const ANSWERS = {
-    sculpt: (r) => [
+    draw: (r) => [
       ...r.questions.map((q, i) => ({ n: i + 1, prompt: q.short || q.text, answer: q.answer, detail: q.note })),
       ...(r.spare || []).map((q, i) => ({ prompt: `${q.short || q.text} (запасной)`, answer: q.answer, detail: q.note, key: `${r.id}-spare-${i}` }))
         .filter((a) => visited.has(a.key))
         .map((a, i) => ({ ...a, n: r.questions.length + i + 1 })),
     ],
     sounds: (r) => r.sounds.map((s, i) => ({ n: i + 1, answer: s.answer, detail: s.detail, sound: s })),
-    bible: (r) => r.statements.map((st, i) => ({
-      n: i + 1, prompt: st.text, verdict: st.isInBible, answer: st.explain,
-      ref: st.ref,
-    })),
-    flip: (r) => r.puzzles.map((p, i) => ({ n: i + 1, prompt: `«${p.flipped}»`, answer: `«${p.original}»`, detail: [p.kind, p.fact].filter(Boolean).join(". ") })),
-    order: (r, s) => [...r.waves[s.wave].cards].sort((a, b) => a.place - b.place).map((c) => ({
-      n: c.place, prompt: c.title, answer: c.answer, detail: c.detail, thumb: c.image && `assets/order/${c.image}`,
+    qa: (r) => r.questions.map((q, i) => ({
+      n: i + 1, prompt: r.style === "emoji" ? q.text : q.short || q.text, emoji: r.style === "emoji",
+      answer: q.answer, detail: q.note,
     })),
   };
 
   const BUILD = {
-    sculpt(r, base) {
-      r.questions.forEach((q, i) => add("sculptQ", { ...base, q, i, total: r.questions.length }));
-      (r.spare || []).forEach((q, i) => add("sculptQ", { ...base, q, i, spare: true, hidden: true, key: `${r.id}-spare-${i}` }));
+    draw(r, base) {
+      r.questions.forEach((q, i) => add("drawQ", { ...base, q, i, total: r.questions.length }));
+      (r.spare || []).forEach((q, i) => add("drawQ", { ...base, q, i, spare: true, hidden: true, key: `${r.id}-spare-${i}` }));
     },
     sounds(r, base) { r.sounds.forEach((s, i) => add("sound", { ...base, s, i, total: r.sounds.length })); },
-    bible(r, base) { r.statements.forEach((st, i) => add("statement", { ...base, st, i, total: r.statements.length })); },
+    qa(r, base) { r.questions.forEach((q, i) => add("qaQ", { ...base, q, i, total: r.questions.length })); },
     closeup(r, base) { r.items.forEach((it, i) => add("closeup", { ...base, it, i, total: r.items.length })); },
-    flip(r, base) { r.puzzles.forEach((p, i) => add("flip", { ...base, p, i, total: r.puzzles.length })); },
-    order(r, base) { r.waves.forEach((w, i) => add("orderPlay", { ...base, w, i, total: r.waves.length })); },
+    frames(r, base) { r.items.forEach((it, i) => add("frameQ", { ...base, it, i, total: r.items.length })); },
+    touch() {}, // только слайд с названием
   };
 
   add("title");
@@ -199,10 +195,9 @@
     const base = { round, ri };
     add("intro", base);
     BUILD[round.type](round, base);
-    // у «Собери порядок» ответы — отдельно на каждую волну
-    if (round.waves) round.waves.forEach((w, wave) => add("answers", { ...base, wave }));
-    else if (round.type === "closeup") add("closeupAnswers", base);
-    else add("answers", base);
+    if (round.type === "closeup") add("closeupAnswers", base);
+    else if (round.type === "frames") add("framesAnswers", base);
+    else if (round.type !== "touch") add("answers", base);
   });
   add("end");
 
@@ -212,14 +207,12 @@
       case "title": return "Заставка";
       case "end": return "Конец";
       case "intro": return "Суть раунда";
-      case "closeupAnswers": return "Ответы";
-      case "answers": return s.wave != null ? `Ответы: волна ${s.wave + 1}` : "Ответы";
-      case "sculptQ": return (s.spare ? "Запасной: " : `${s.i + 1}. `) + cut(s.q.short || s.q.text);
+      case "closeupAnswers": case "framesAnswers": case "answers": return "Ответы";
+      case "drawQ": return (s.spare ? "Запасной: " : `${s.i + 1}. `) + cut(s.q.short || s.q.text);
       case "sound": return `Звук ${s.i + 1}`;
-      case "statement": return `${s.i + 1}. ${cut(s.st.text)}`;
+      case "qaQ": return `${s.i + 1}. ${cut(s.q.short || s.q.text)}`;
       case "closeup": return `Предмет ${s.i + 1}`;
-      case "flip": return `${s.i + 1}. ${cut(s.p.flipped)}`;
-      case "orderPlay": return `Волна ${s.i + 1}. ${s.w.title}`;
+      case "frameQ": return `Кадр ${s.i + 1}`;
       default: return s.kind;
     }
   }
@@ -312,15 +305,15 @@
       const r = s.round;
       n.classList.add("s-intro");
       // **текст** в «Сути» — жирным
-      const about = esc(r.about).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+      const about = r.about ? esc(r.about).replace(/\*\*(.+?)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>") : "";
       n.innerHTML = `
         <div class="label appear">Раунд ${s.ri + 1} из ${Q.rounds.length}</div>
         <h1 class="appear" style="--i:1">${esc(r.title)}</h1>
-        <p class="about appear" style="--i:2">${about}</p>`;
+        ${about ? `<p class="about appear" style="--i:2">${about}</p>` : ""}`;
     },
 
-    /* ── Раунд 1 ── */
-    sculptQ(s, n) {
+    /* ── «Нарисуй ответ» ── */
+    drawQ(s, n) {
       if (s.spare) visited.add(s.key);
       const r = s.round;
       const long = s.q.text.length > 150;
@@ -331,11 +324,11 @@
         phases: r.phases,
         steps: r.phases.length > 1 ? r.phases.map((p) => [p.label, fmt(p.seconds)]) : null,
         stepsFollowTimer: true,
-        endText: "Стоп! Фото — ведущему",
+        endText: "Стоп!",
       });
     },
 
-    /* ── Раунд 2 ── */
+    /* ── «Звуки детства» ── */
     sound(s, n) {
       const r = s.round;
       let handle = null;
@@ -382,19 +375,27 @@
       return q;
     },
 
-    /* ── Раунд 3 ── */
-    statement(s, n) {
+    /* ── Вопрос с текстом: «Угадай по эмодзи», «Всё обо всём», «Блиц» ── */
+    qaQ(s, n) {
+      const r = s.round;
+      const q = s.q;
+      const label = r.label || "Вопрос";
+      const emoji = r.style === "emoji";
+      const long = q.text.length > 150 || (q.options && q.text.length > 90);
+      const opts = q.options
+        ? `<ol class="opts ${q.numbered ? "numbered" : ""}">${q.options.map((o) => `<li>${esc(o)}</li>`).join("")}</ol>`
+        : "";
       return questionSlide(s, n, {
-        cover: cover("Утверждение", s.i, s.total),
-        body: `${counter("Утверждение", s.i, s.total)}
-               <div class="statement">${esc(s.st.text)}</div>
-               <div class="yn"><span class="y">ЕСТЬ</span><span class="n">НЕТ</span></div>`,
-        phases: [{ label: "Обсуждаем", seconds: s.round.seconds }],
-        endText: "3-2-1 — поднимаем таблички!",
+        cover: cover(label, s.i, s.total),
+        body: `${counter(label, s.i, s.total)}
+               ${emoji ? `<div class="emoji-q">${esc(q.text)}</div>` : `<div class="q-text ${long ? "long" : ""}">${esc(q.text)}</div>`}
+               ${opts}
+               ${q.image ? `<img class="q-img" src="${esc(q.image)}" alt="">` : ""}`,
+        phases: [{ label: "", seconds: r.seconds }],
       });
     },
 
-    /* ── Раунд 4 ── */
+    /* ── «Крупный план» ── */
     closeup(s, n) {
       const r = s.round;
       const it = s.it;
@@ -470,47 +471,71 @@
       };
     },
 
-    /* ── Раунд 5 ── */
-    flip(s, n) {
-      return questionSlide(s, n, {
-        cover: cover("Загадка", s.i, s.total),
-        body: `${counter("Загадка", s.i, s.total)}
-               <div class="flip-text">«${esc(s.p.flipped)}»</div>`,
-        phases: [{ label: "Думаем", seconds: s.round.seconds }],
+    /* ── «Угадай по кадру» ── */
+    frameQ(s, n) {
+      const r = s.round;
+      const it = s.it;
+      n.classList.add("s-closeup");
+      const q = questionSlide(s, n, {
+        cover: cover("Кадр", s.i, s.total),
+        body: `<div class="frame"></div>`,
+        phases: [{ label: "", seconds: r.seconds }],
       });
+      const frame = n.querySelector(".frame");
+      frame.appendChild(loadImage(`assets/frames/${it.file}`, (im) => im.classList.add("on"), () => {
+        frame.innerHTML = `<div class="placeholder"><div>Нет картинки<br><code>assets/frames/${esc(it.file)}.jpg</code></div></div>`;
+      }));
+      return q;
     },
 
-    /* ── Раунд 6 ── */
-    orderPlay(s, n) {
+    /* ── Ответы «Угадай по кадру»: сетка кадров, названия открываются по одному ── */
+    framesAnswers(s, n) {
       const r = s.round;
-      const w = s.w;
-      const withImages = w.cards.some((c) => c.image);
-      return questionSlide(s, n, {
-        cover: `${cover("Волна", s.i, s.total)}<div class="cover-title">${esc(w.title)}</div>`,
-        body: `${counter("Волна", s.i, s.total)}
-               <div class="wave-title">${esc(w.title)}</div>
-               <div class="wave-note">${esc(w.note ? `${w.note} · от раннего к позднему` : "От раннего к позднему")}</div>
-               <div class="cards ${withImages ? "with-images" : ""}">
-                 ${w.cards.map((c) => `<div>${c.image ? `<img src="assets/order/${esc(c.image)}.jpg" alt="">` : ""}<span>${esc(c.title)}</span></div>`).join("")}
-               </div>`,
-        phases: [{ label: "Раскладываем", seconds: r.seconds }],
-        endText: "Стоп!",
-      });
+      n.classList.add("s-fr-answers");
+      n.innerHTML = `
+        <div class="head">
+          <div>
+            <div class="label">Раунд ${s.ri + 1} · ${esc(r.title)}</div>
+            <h2>Ответы</h2>
+          </div>
+          <div class="q-count"><b class="shown">0</b> из ${r.items.length}</div>
+        </div>
+        <div class="fr-grid">
+          ${r.items.map((it, k) => `
+            <div class="fr-card">
+              <span class="fr-n">${k + 1}</span>
+              <div class="fr-title">${esc(it.answer)}</div>
+            </div>`).join("")}
+        </div>`;
+      const cards = [...n.querySelectorAll(".fr-card")];
+      cards.forEach((c, k) => c.prepend(loadImage(`assets/frames/${r.items[k].file}`)));
+      const shownEl = n.querySelector(".shown");
+      let shown = 0;
+      const update = () => {
+        cards.forEach((c, k) => {
+          c.classList.toggle("on", k < shown);
+          c.classList.toggle("cur", k === shown - 1);
+        });
+        shownEl.textContent = shown;
+      };
+      return {
+        next: () => (shown < cards.length ? (shown++, update(), true) : false),
+        prev: () => (shown > 0 ? (shown--, update(), true) : false),
+      };
     },
 
     /* ── Ответы раунда ── */
     answers(s, n) {
       const r = s.round;
       const items = ANSWERS[r.type](r, s);
-      const w = s.wave != null ? r.waves[s.wave] : null;
       const compact = items.every((a) => !a.prompt);
       const two = compact && items.length > 6;
       n.classList.add("s-answers");
       n.innerHTML = `
         <div class="head">
           <div>
-            <div class="label">Раунд ${s.ri + 1} · ${esc(r.title)}${w ? ` · Волна ${s.wave + 1}` : ""}</div>
-            <h2>${w ? `Ответы: ${esc(w.title)}` : "Ответы"}</h2>
+            <div class="label">Раунд ${s.ri + 1} · ${esc(r.title)}</div>
+            <h2>Ответы</h2>
           </div>
           <div class="q-count"><b class="shown">0</b> из ${items.length}</div>
         </div>
@@ -518,15 +543,14 @@
           ${items.map((a, idx) => `${two && idx === 0 ? `<div class="acol">` : ""}${two && idx === Math.ceil(items.length / 2) ? `</div><div class="acol">` : ""}
             <li class="arow">
               <div class="an">${esc(a.n)}</div>
-              ${compact ? "" : `<div class="aq">${a.thumb ? `<span class="thumb ${a.thumbAfter ? "swap" : ""}"><img class="t-before" data-src="${esc(a.thumb)}" alt="">${a.thumbAfter ? `<img class="t-after" data-src="${esc(a.thumbAfter)}" alt="">` : ""}</span>` : ""}<span>${esc(a.prompt)}</span></div>`}
+              ${compact ? "" : `<div class="aq">${a.thumb ? `<span class="thumb ${a.thumbAfter ? "swap" : ""}"><img class="t-before" data-src="${esc(a.thumb)}" alt="">${a.thumbAfter ? `<img class="t-after" data-src="${esc(a.thumbAfter)}" alt="">` : ""}</span>` : ""}<span class="${a.emoji ? "emoji-p" : ""}">${esc(a.prompt)}</span></div>`}
               <div class="aa"><div class="aa-in">
-                <div class="ans">${a.verdict != null ? `<span class="verdict ${a.verdict ? "y" : "n"}">${a.verdict ? "ЕСТЬ" : "НЕТ"}</span>` : ""}${a.verdict != null ? "" : esc(a.answer)}</div>
-                ${a.verdict != null ? `<div class="det" style="color:var(--fg-2)">${esc(a.answer)}${a.ref ? ` <span class="ref">${esc(a.ref)}</span>` : ""}</div>` : ""}
+                <div class="ans">${esc(a.answer)}</div>
                 ${a.detail ? `<div class="det">${esc(a.detail)}</div>` : ""}
               </div></div>
             </li>`).join("")}${two ? "</div>" : ""}
         </ol>`;
-      // миниатюры («Крупный план», здания)
+      // миниатюры
       n.querySelectorAll(".thumb img[data-src]").forEach((im) => {
         loadImage(im.dataset.src, (ok) => { im.src = ok.src; }, () => im.remove());
       });
