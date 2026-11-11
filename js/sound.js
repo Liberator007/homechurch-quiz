@@ -150,32 +150,48 @@ window.Sound = (() => {
     };
   }
 
-  // Проверка, есть ли файл (кешируется)
-  const probeCache = new Map();
-  function probe(file) {
-    if (!file) return Promise.resolve(false);
-    if (!probeCache.has(file)) {
-      probeCache.set(file, new Promise((res) => {
-        const a = new Audio();
-        a.preload = "auto";
-        a.addEventListener("canplay", () => res(true), { once: true });
-        a.addEventListener("error", () => res(false), { once: true });
-        a.src = file;
-        setTimeout(() => res(false), 4000);
-      }));
+  // Файлы звуков грузятся заранее (preload) и хранятся в памяти: один <audio> на файл.
+  // Никаких таймаутов: при медленном интернете ждём файл, а встроенная замена
+  // включается, только если файла действительно нет.
+  const clips = new Map(); // file → { audio, state: "loading" | "ready" | "error", ready: Promise<boolean> }
+  function load(file) {
+    if (!file) return null;
+    if (!clips.has(file)) {
+      const a = new Audio();
+      a.preload = "auto";
+      const c = { audio: a, state: "loading" };
+      c.ready = new Promise((res) => {
+        a.addEventListener("canplaythrough", () => { c.state = "ready"; res(true); }, { once: true });
+        a.addEventListener("error", () => { c.state = "error"; res(false); }, { once: true });
+      });
+      a.src = file;
+      a.load();
+      clips.set(file, c);
     }
-    return probeCache.get(file);
+    return clips.get(file);
   }
+  const preload = (files) => files.map(load).filter(Boolean);
+  // true — файл загружен, false — файла нет (ошибка загрузки)
+  const probe = (file) => (file ? load(file).ready : Promise.resolve(false));
 
-  function playFile(file, clip) {
-    const a = new Audio(file);
-    let timer, fade;
+  function playFile(a, clip) {
     let stopped = false;
+    let timer, fade, finish;
+    a.pause();
+    try { a.currentTime = 0; } catch { /* ещё нет данных */ }
+    a.volume = 1;
     const done = new Promise((res) => {
-      const finish = () => { clearTimeout(timer); clearInterval(fade); res(); };
-      a.addEventListener("ended", finish, { once: true });
-      a.addEventListener("error", finish, { once: true });
-      a.play().catch(finish);
+      finish = () => {
+        clearTimeout(timer);
+        clearInterval(fade);
+        a.removeEventListener("ended", finish);
+        res();
+      };
+      a.addEventListener("ended", finish);
+    });
+    // play() ждёт, пока данных хватит для старта, — даже на медленном интернете
+    const started = a.play().then(() => {
+      if (stopped) { a.pause(); return true; }
       if (clip) {
         // плавно затухаем последние 0.6 с отрывка
         timer = setTimeout(() => {
@@ -185,15 +201,16 @@ window.Sound = (() => {
           }, 60);
         }, Math.max(0, clip * 1000 - 600));
       }
-      a._finish = finish;
-    });
+      return true;
+    }, () => { finish(); return stopped; });
     return {
       done,
+      started,
       stop() {
         if (stopped) return;
         stopped = true;
         a.pause();
-        a._finish && a._finish();
+        finish();
       },
     };
   }
@@ -202,7 +219,11 @@ window.Sound = (() => {
   // Возвращает { done: Promise, stop(), source: "file"|"synth"|"missing" }
   async function play(sound) {
     audio();
-    if (await probe(sound.file)) return { ...playFile(sound.file, sound.clip), source: "file" };
+    const c = load(sound.file);
+    if (c && c.state !== "error") {
+      const h = playFile(c.audio, sound.clip);
+      if (await h.started) return { ...h, source: "file" };
+    }
     if (sound.synth && SYNTHS[sound.synth]) return { ...playSynth(sound.synth), source: "synth" };
     return { done: Promise.resolve(), stop() {}, source: "missing" };
   }
@@ -222,7 +243,8 @@ window.Sound = (() => {
     tone(master, 783.99, t + 0.28, 0.5, { type: "triangle", vol: 0.35, release: 0.3 });
   }
   return {
-    play, probe, tick, end,
+    play, probe, preload, tick, end,
+    get clips() { return clips; },
     unlock: audio,
     get muted() { return muted; },
     set muted(v) { muted = v; },

@@ -298,7 +298,8 @@
         <h1 class="appear" style="--i:1">${esc(Q.title)}</h1>
         <div class="rounds">
           ${Q.rounds.map((r, i) => `<div class="appear" data-round="${r.id}" style="--i:${i + 2}"><span>Раунд ${i + 1}</span>${esc(r.title)}</div>`).join("")}
-        </div>`;
+        </div>
+        <div class="load-status"></div>`;
     },
 
     intro(s, n) {
@@ -669,6 +670,7 @@
     store.set("slide", i);
     history.replaceState(null, "", "#" + (i + 1));
     if (overlay && overlay.type === "slides") drawOverlay();
+    showLoad();
   }
 
   function next() {
@@ -860,5 +862,51 @@
     const k = parseInt(location.hash.slice(1), 10) - 1;
     if (Number.isFinite(k) && k !== cur) go(k);
   });
+  /* ═══════════════ Заранее грузим все звуки и картинки ═══════════════ */
+  // Чтобы на медленном интернете файлы не догружались посреди раунда.
+  const assets = { sounds: [], images: [] };
+  for (const r of Q.rounds) {
+    (r.sounds || []).forEach((snd) => snd.file && assets.sounds.push(snd.file));
+    if (r.type === "closeup") r.items.forEach((it) => assets.images.push(`assets/closeup/${it.prefix}_1.jpg`, `assets/closeup/${it.prefix}_2.jpg`));
+    if (r.type === "frames") r.items.forEach((it) => assets.images.push(`assets/frames/${it.file}.jpg`));
+    (r.questions || []).forEach((q) => q.image && assets.images.push(q.image));
+  }
+  const loadState = { total: 0, done: 0, failed: [] };
+  const loadEl = document.querySelector("#hud .load");
+  function showLoad() {
+    const { total, done, failed } = loadState;
+    const loading = done < total;
+    loadEl.textContent = loading ? `Загрузка ${done}/${total}` : failed.length ? `Не загрузилось: ${failed.length}` : "Файлы ✓";
+    loadEl.title = failed.length ? `Не загрузились:\n${failed.join("\n")}` : "Все звуки и картинки загружены";
+    loadEl.classList.toggle("bad", failed.length > 0);
+    const line = stage.querySelector(".slide:last-child .load-status");
+    if (line) {
+      line.textContent = loading ? `Загружаем звуки и картинки: ${done} из ${total}` : failed.length ? `Не загрузились файлы: ${failed.length}` : "";
+      line.classList.toggle("bad", !loading && failed.length > 0);
+    }
+  }
+  const track = (ready, name) => {
+    loadState.total++;
+    ready.then((ok) => {
+      loadState.done++;
+      if (!ok) loadState.failed.push(name);
+      showLoad();
+    });
+  };
+  Sound.preload(assets.sounds);
+  assets.sounds.forEach((f) => track(Sound.probe(f), f));
+  const preloaded = assets.images.map((src) => {
+    const im = new Image();
+    track(new Promise((res) => { im.onload = () => res(true); im.onerror = () => res(false); }), src);
+    im.src = src;
+    return im;
+  });
+  window.__preloaded = preloaded; // держим ссылки, чтобы браузер не выбросил картинки
+
+  // Офлайн-кэш: после первого открытия по ссылке сайт работает и без интернета
+  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+
   go(Number.isFinite(start) && slides[start] ? start : 0);
 })();
