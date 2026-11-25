@@ -294,7 +294,6 @@
     title(s, n) {
       n.classList.add("s-title");
       n.innerHTML = `
-        <div class="label appear">${esc(Q.subtitle)}</div>
         <h1 class="appear" style="--i:1">${esc(Q.title)}</h1>
         <div class="rounds">
           ${Q.rounds.map((r, i) => `<div class="appear" data-round="${r.id}" style="--i:${i + 2}"><span>Раунд ${i + 1}</span>${esc(r.title)}</div>`).join("")}
