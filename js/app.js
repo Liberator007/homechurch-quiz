@@ -618,7 +618,6 @@
     end(s, n) {
       n.classList.add("s-end");
       n.innerHTML = `
-        <div class="label appear">${esc(Q.subtitle)}</div>
         <h1 class="appear" style="--i:1">Спасибо за игру!</h1>
         <p class="appear" style="--i:2">Подводим итоги</p>`;
     },
@@ -632,7 +631,7 @@
   function updateChrome(s) {
     const r = s.round;
     stage.dataset.round = r ? r.id : "";
-    const bare = ["title", "end", "closeup"].includes(s.kind);
+    const bare = ["title", "end", "closeup", "frameQ"].includes(s.kind);
     chrome.classList.toggle("hidden", bare || !r);
     progress.classList.toggle("hidden", bare);
     chrome.innerHTML = r ? `<span class="round">Раунд ${s.ri + 1} <b>${esc(r.title)}</b></span><span></span>` : "";
